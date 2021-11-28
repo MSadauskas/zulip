@@ -764,6 +764,20 @@ class InlineInterestingLinkProcessor(markdown.treeprocessors.Treeprocessor):
                 return True
         return False
 
+    def is_video(self, url: str) -> bool:
+        if not self.md.image_preview_enabled:
+            return False
+        parsed_url = urllib.parse.urlparse(url)
+        # remove HTML URLs which end with image extensions that can not be shorted
+        if parsed_url.netloc == "pasteboard.co":
+            return False
+
+        # List from https://support.google.com/chromeos/bin/answer.py?hl=en&answer=183093
+        for ext in [".mp4", ".mkv", ".webm"]:
+            if parsed_url.path.lower().endswith(ext):
+                return True
+        return False
+
     def corrected_image_source(self, url: str) -> Optional[str]:
         # This function adjusts any URLs from linx.li and
         # wikipedia.org to point to the actual image URL.  It's
@@ -1144,6 +1158,43 @@ class InlineInterestingLinkProcessor(markdown.treeprocessors.Treeprocessor):
         if info["remove"] is not None:
             info["parent"].remove(info["remove"])
 
+    def handle_video_inlining(
+        self,
+        root: Element,
+        found_url: ResultWithFamily[Tuple[str, Optional[str]]],
+    ) -> None:
+        info = self.get_inlining_information(root, found_url)
+        (url, text) = found_url.result
+        insertion_index=info["index"]
+
+        # Update message.has_image attribute.
+        if self.md.zulip_message:
+            self.md.zulip_message.has_image = True
+
+        if insertion_index is not None:
+            div = Element("div")
+            root.insert(insertion_index, div)
+        else:
+            div = SubElement(root, "div")
+
+        # div.set("class", class_attr)
+        a = SubElement(div, "video")
+        a.set("width", "100%")
+        a.set("src", url)
+        a.set("controls", "true")
+
+        #if title is not None:
+        #    a.set("title", title)
+        #if data_id is not None:
+        #    a.set("data-id", data_id)
+        #img = SubElement(a, "img")
+        #actual_url = self.get_actual_image_url(url)
+        #self.add_a(
+        #    info["parent"], actual_url, url, title=info["title"], insertion_index=info["index"]
+        #)
+        if info["remove"] is not None:
+            info["parent"].remove(info["remove"])
+
     def handle_tweet_inlining(
         self,
         root: Element,
@@ -1270,6 +1321,8 @@ class InlineInterestingLinkProcessor(markdown.treeprocessors.Treeprocessor):
             if not self.is_absolute_url(url):
                 if self.is_image(url):
                     self.handle_image_inlining(root, found_url)
+                elif self.is_video(url):
+                    self.handle_video_inlining(root, found_url)
                 # We don't have a strong use case for doing URL preview for relative links.
                 continue
 

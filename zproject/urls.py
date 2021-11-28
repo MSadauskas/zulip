@@ -15,6 +15,8 @@ from django.urls.resolvers import URLPattern, URLResolver
 from django.utils.module_loading import import_string
 from django.views.generic import RedirectView, TemplateView
 
+from zerver.tvvideoviews import authenticated_media_view
+
 from zerver.forms import LoggingSetPasswordForm
 from zerver.lib.integrations import WEBHOOK_INTEGRATIONS
 from zerver.lib.rest import rest_path
@@ -599,6 +601,9 @@ i18n_urls = [
     path("integrations/doc-html/<integration_name>", integration_doc),
     path("integrations/", integrations_view),
     path("integrations/<path:path>", integrations_view),
+
+    path("media/<group_path>/<path:path>", authenticated_media_view),
+
     # Landing page, features pages, signup form, etc.
     path("hello/", hello_view),
     path("new-user/", RedirectView.as_view(url="/hello", permanent=True)),

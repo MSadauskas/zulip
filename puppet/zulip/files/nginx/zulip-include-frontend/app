@@ -79,3 +79,7 @@ location /api/ {
 }
 
 include /etc/nginx/zulip-include/app.d/*.conf;
+
+location /media/ {
+    include uwsgi_params;
+}
